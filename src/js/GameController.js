@@ -27,6 +27,7 @@ export default class GameController {
     this.level = 1;
     this.score = 0;
     this.blockedBoard = false;
+    this.aliveCharacters = [];
   }
 
   init() {
@@ -127,7 +128,7 @@ export default class GameController {
     damage = Math.floor(damage);
 
     target.health -= damage;
-    
+
     for (const char of this.position) {
       if (char.character.health <= 0) {
         char.character.health = 0;
@@ -205,10 +206,23 @@ export default class GameController {
     }
 
     for (const char of this.position) {
-      char.character.level += 1;
+      if (this.aliveCharacters.includes(char)) {
+        char.character.level += 1;
 
-      char.character.attack = Math.max(char.character.attack, char.character.attack * (80 + char.character.health) / 100);
-      char.character.defence = Math.max(char.character.defence, char.character.defence * (80 + char.character.health) / 100);
+        char.character.attack = parseFloat(Math.max(char.character.attack, char.character.attack * (80 + char.character.health) / 100).toFixed(1));
+        char.character.defence = parseFloat(Math.max(char.character.defence, char.character.defence * (80 + char.character.health) / 100).toFixed(1));
+      } else {
+        char.character.level = this.level;
+
+        const coefficient = (80 + char.character.health) / 100;
+        const coefficientBylevel = coefficient ** (this.level - 1);
+
+        char.character.newAttack = parseFloat((char.character.attack * coefficientBylevel).toFixed(1));
+        char.character.newDefence = parseFloat((char.character.defence * coefficientBylevel).toFixed(1));
+
+        char.character.attack = char.character.newAttack;
+        char.character.defence = char.character.newDefence;
+      }
 
       char.character.health += 80;
       if (char.character.health > 100) {
@@ -225,6 +239,7 @@ export default class GameController {
 
     if (userTeam.length === 1) {
       this.position[0].position = this.getRandomPosition(this.userPositions);
+      this.aliveCharacters.push(this.position[0]);
 
       const team = generateTeam(this.userTypes, 1, 2);
       const arr = [];
@@ -244,11 +259,17 @@ export default class GameController {
       for (const char of this.position) {
         if (['bowman', 'swordsman', 'magician'].includes(char.character.type)) {
           char.position = this.getRandomPosition(this.userPositions);
+          this.aliveCharacters.push(char);
         }
       }
 
       this.gamePlay.redrawPositions(userTeam);
     }
+
+    const filteredaArr = new Set(this.aliveCharacters);
+    this.aliveCharacters = [...filteredaArr];
+    const aliveCharacters = this.aliveCharacters.filter((char) => this.position.includes(char));
+    this.aliveCharacters = aliveCharacters;
 
     const enemyCharacters = this.generatePlayers(this.enemyPositions, this.enemyTypes);
     this.gamePlay.redrawPositions(enemyCharacters);
@@ -301,6 +322,7 @@ export default class GameController {
     this.level = 1;
     this.turn = 'user';
     this.activeCharacter = {};
+    this.aliveCharacters = [];
     this.deselectAllCells();
 
     this.gamePlay.addCellClickListener(this.onCellClick.bind(this));
@@ -318,6 +340,7 @@ export default class GameController {
         level: this.level,
         position: this.position,
         score: this.score,
+        aliveCharacters: this.aliveCharacters,
       };
       const gameState = GameState.from(savedGame);
       this.stateService.save(gameState);
@@ -333,6 +356,7 @@ export default class GameController {
         this.level = loadedGame.level;
         this.position = loadedGame.position;
         this.score = loadedGame.score;
+        this.aliveCharacters = loadedGame.aliveCharacters;
 
         if (this.level === 2) {
           this.gamePlay.drawUi(themes.desert);
