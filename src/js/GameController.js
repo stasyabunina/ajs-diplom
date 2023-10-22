@@ -127,16 +127,7 @@ export default class GameController {
     damage = Math.floor(damage);
 
     target.health -= damage;
-
-    // cheat test //////
-
-    const userTeam = this.position.filter((el) => ['bowman', 'swordsman', 'magician'].includes(el.character.type));
-    for (const char of userTeam) {
-      char.character.attack = 100;
-    }
-
-    /////////
-
+    
     for (const char of this.position) {
       if (char.character.health <= 0) {
         char.character.health = 0;
