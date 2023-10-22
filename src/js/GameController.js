@@ -128,6 +128,15 @@ export default class GameController {
 
     target.health -= damage;
 
+    // cheat test //////
+
+    const userTeam = this.position.filter((el) => ['bowman', 'swordsman', 'magician'].includes(el.character.type));
+    for (const char of userTeam) {
+      char.character.attack = 100;
+    }
+
+    /////////
+
     for (const char of this.position) {
       if (char.character.health <= 0) {
         char.character.health = 0;
@@ -154,7 +163,7 @@ export default class GameController {
     if (userTeam.length === 0) {
       this.blockedBoard = true;
       this.score = 0;
-      GamePlay.showError('Вы проиграли.');
+      GamePlay.showError(`Вы проиграли. Ваше количество очков: ${this.score}`);
       this.gamePlay.setCursor(cursors.notallowed);
 
       this.gamePlay.cellClickListeners = [];
@@ -163,12 +172,46 @@ export default class GameController {
     }
 
     if (this.level < 5 && enemyTeam.length === 0) {
-      this.nextCharacterLevel();
+      this.nextLevel();
     }
   }
 
-  nextCharacterLevel() {
-    this.nextMapLevel();
+  nextLevel() {
+    const userTeam = this.position.filter((el) => ['bowman', 'swordsman', 'magician'].includes(el.character.type));
+
+    for (const userCharacter of userTeam) {
+      this.score += userCharacter.character.health;
+    }
+
+    this.level += 1;
+
+    if (this.level === 2) {
+      this.gamePlay.drawUi(themes.desert);
+      this.redrawAliveCharacters();
+    }
+
+    if (this.level === 3) {
+      this.gamePlay.drawUi(themes.arctic);
+      this.redrawAliveCharacters();
+    }
+
+    if (this.level === 4) {
+      this.gamePlay.drawUi(themes.mountain);
+      this.redrawAliveCharacters();
+    }
+
+    if (this.level >= 5) {
+      this.blockedBoard = true;
+      GamePlay.showMessage(`Поздравляю, вы выиграли. Ваше количество очков: ${this.score}`);
+
+      this.gamePlay.setCursor(cursors.notallowed);
+
+      this.gamePlay.cellClickListeners = [];
+      this.gamePlay.cellEnterListeners = [];
+      this.gamePlay.cellLeaveListeners = [];
+
+      this.gamePlay.redrawPositions(this.position);
+    }
 
     for (const char of this.position) {
       char.character.level += 1;
@@ -184,47 +227,43 @@ export default class GameController {
 
     this.activeCharacter = {};
     this.deselectAllCells();
-
-    this.gamePlay.redrawPositions(this.position);
   }
 
-  nextMapLevel() {
+  redrawAliveCharacters() {
     const userTeam = this.position.filter((el) => ['bowman', 'swordsman', 'magician'].includes(el.character.type));
 
-    for (const userCharacter of userTeam) {
-      this.score += userCharacter.character.health;
+    if (userTeam.length === 1) {
+      this.position[0].position = this.getRandomPosition(this.userPositions);
+
+      const team = generateTeam(this.userTypes, 1, 2);
+      const arr = [];
+
+      for (const character of team) {
+        const position = this.getRandomPosition(this.userPositions);
+        const char = new PositionedCharacter(character, position);
+        arr.push(char);
+      }
+
+      const randomUserChar = Math.floor(Math.random() * arr.length);
+
+      this.position.push(arr[randomUserChar]);
+
+      this.gamePlay.redrawPositions(userTeam);
+    } else if (userTeam.length === 2) {
+      for (const char of this.position) {
+        if (['bowman', 'swordsman', 'magician'].includes(char.character.type)) {
+          char.position = this.getRandomPosition(this.userPositions);
+        }
+      }
+
+      this.gamePlay.redrawPositions(userTeam);
     }
 
-    this.level += 1;
-
-    if (this.level === 2) {
-      this.gamePlay.drawUi(themes.desert);
-      this.redrawCharacters();
-    }
-
-    if (this.level === 3) {
-      this.gamePlay.drawUi(themes.arctic);
-      this.redrawCharacters();
-    }
-
-    if (this.level === 4) {
-      this.gamePlay.drawUi(themes.mountain);
-      this.redrawCharacters();
-    }
-
-    if (this.level >= 5) {
-      this.blockedBoard = true;
-      GamePlay.showMessage('Поздравляю, вы выиграли.');
-
-      this.gamePlay.setCursor(cursors.notallowed);
-
-      this.gamePlay.cellClickListeners = [];
-      this.gamePlay.cellEnterListeners = [];
-      this.gamePlay.cellLeaveListeners = [];
-    }
+    const enemyCharacters = this.generatePlayers(this.enemyPositions, this.enemyTypes);
+    this.gamePlay.redrawPositions(enemyCharacters);
   }
 
-  redrawCharacters() {
+  redrawAllCharacters() {
     this.position = [];
 
     const userCharacters = this.generatePlayers(this.userPositions, this.userTypes);
@@ -277,7 +316,7 @@ export default class GameController {
     this.gamePlay.addCellEnterListener(this.onCellEnter.bind(this));
     this.gamePlay.addCellLeaveListener(this.onCellLeave.bind(this));
 
-    this.redrawCharacters();
+    this.redrawAllCharacters();
   }
 
   saveGame() {
